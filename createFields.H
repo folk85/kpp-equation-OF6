@@ -27,6 +27,18 @@ volScalarField xi
     mesh
 );
 
+volScalarField velInit
+(
+    IOobject
+    (
+        "velInit",
+        runTime.timeName(),
+        mesh,
+        IOobject::MUST_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh
+);
 
 Info<< "Reading field U\n" << endl;
 

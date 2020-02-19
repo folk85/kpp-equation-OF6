@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
             // U[i][0] = (1.0-dtheta.value()*dx.value()) * U[i-1][0] + dW.value();
             dF[i] = rcorr * dF[i-1] + rroot * dWi.value();
         }
-        U[i][0] = dF[i];
+        velInit[i] = dF[i];
         
 //        Info << "Mesh " << C[i][0] << " " << U[i][0] << endl;
     }
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
     scalar velm(0.0);
     scalar vels(0.0);
     forAll(U,i){
-        U[i][0] *= barVel.value();
+        U[i][0] = velInit[i] * barVel.value();
         U[i][0] -= vShift.value();
 //         U[i][0] = 2.0;
       //  U[i][0] = 0.0;
@@ -150,11 +150,13 @@ int main(int argc, char *argv[])
             fvScalarMatrix TEqn
             (
                 fvm::ddt(T)
-              + fvm::div(phi, T)
+//               + fvm::div(phi, T)
+              - fvm::div(phi, T)
             //   - T * fvc::div(phi)
               - fvm::laplacian(DT, T)
             //   - fvm::SuSp(fvc::div(phi) - DK*xi*xi, T)
-              - fvm::Sp(fvc::div(phi) + DK - DK*T, T)
+//               - fvm::Sp(fvc::div(phi) + DK - DK*T, T)
+              + fvm::Sp(fvc::div(phi) - DK + DK*T, T)
             //   - fvm::SuSp(DK*T-DK*T*T+fvc::div(phi), T)
              ==
                 fvOptions(T)
