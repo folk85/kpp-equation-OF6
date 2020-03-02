@@ -40,6 +40,7 @@ int main(int argc, char *argv[])
 {
     #include "setRootCaseLists.H"
     #include "createTime.H"
+    #include "createTimeControls.H"
     #include "createMesh.H"
 
     simpleControl simple(mesh);
@@ -81,6 +82,8 @@ int main(int argc, char *argv[])
     List<scalar> dF(C.size());
     List<scalar> dr(C.size());
 
+    if (!useOldField) {
+      Info << "Generate a new stochastic field" << nl << endl;
     forAll(U, i){
         dimensionedScalar dW = rndGen.scalarNormal();
         dimensionedScalar dWi = dW * dsigma_t;
@@ -95,8 +98,14 @@ int main(int argc, char *argv[])
             dF[i] = rcorr * dF[i-1] + rroot * dWi.value();
         }
         velInit[i] = dF[i];
+        velInit[i] = dW.value();
         
 //        Info << "Mesh " << C[i][0] << " " << U[i][0] << endl;
+      }
+    } else {
+
+      Info << "Use existing stochastic field" << nl << endl;
+
     }
     // Scale the values by barVel
     //
@@ -120,13 +129,29 @@ int main(int argc, char *argv[])
     // file.open("res.dat",std::ofstream::out| std::ofstream::app);
     file.open("res.dat",std::ofstream::out);
     forAll(dF, i) {
-      file << i<<","<< C[i][0] << ',' << dF[i]<<","<<U[i][0] << ',' << dr[i]<<std::endl;
+      file << i<<","<< C[i][0] << ',' << velInit[i]<<","<<U[i][0] << ',' << dr[i]<<std::endl;
     }
     file.close();
+
+    #include "setInitialDeltaT.H"
+
     Info << "Start timesteps" << endl;
 
     while (simple.loop(runTime))
     {
+
+        forAll(U, i){
+            scalar dW = rndGen.scalarNormal();
+            velInit[i] = dW;
+            U[i][0] = velInit[i] * barVel.value();
+        }
+
+        #include "readTimeControls.H"
+
+        #include "CourantNo.H"
+
+        #include "setDeltaT.H"
+
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
 //             // Update velocity
@@ -154,12 +179,13 @@ int main(int argc, char *argv[])
               - fvm::div(phi, T)
             //   - T * fvc::div(phi)
               - fvm::laplacian(DT, T)
-            //   - fvm::SuSp(fvc::div(phi) - DK*xi*xi, T)
-//               - fvm::Sp(fvc::div(phi) + DK - DK*T, T)
-              + fvm::Sp(fvc::div(phi) - DK + DK*T, T)
+            //   + fvm::Sp(fvc::div(phi) - DK + DK*T, T)
+              ==
+                fvm::Sp(DK - DK*T, T)
+              - fvm::Sp(fvc::div(phi), T)
             //   - fvm::SuSp(DK*T-DK*T*T+fvc::div(phi), T)
-             ==
-                fvOptions(T)
+            //  ==
+            //     fvOptions(T)
             );
 
             TEqn.relax();
@@ -191,10 +217,10 @@ int main(int argc, char *argv[])
             // Info<< "Residuals = " << TEqn.solve().max().initialResidual() << " " << xiEqn.solve().max().initialResidual()  << endl;
             Info<< "Residuals = " << TInitialResidual << " " << xiInitialResidual << " Cnt = "<< icount  << endl;
 
-            if (TInitialResidual<1.0e-6 && xiInitialResidual < 1.0e-6) {
+            if (TInitialResidual<1.0e-5 && xiInitialResidual < 1.0e-5) {
                 cond = false ;
             }
-            if (icount> 20) {
+            if (icount>= 25) {
                 cond = false;
             }
         }

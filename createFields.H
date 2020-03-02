@@ -132,6 +132,8 @@ dimensionedScalar vShift
     transportProperties.lookup("vShift")
 );
 
+bool useOldField =
+    runTime.controlDict().lookupOrDefault("useOldField", false);
 
 
 #include "createPhi.H"

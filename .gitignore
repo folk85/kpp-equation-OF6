@@ -2,3 +2,5 @@ Make/linux64GccDPInt32Opt/
 *.o
 *.dep
 *~
+1/
+log
