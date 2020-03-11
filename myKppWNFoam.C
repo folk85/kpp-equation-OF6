@@ -87,7 +87,8 @@ int main(int argc, char *argv[])
     forAll(U, i){
         dimensionedScalar dW = rndGen.scalarNormal();
         dimensionedScalar dWi = dW * dsigma_t;
-        dW = dW * dsigma * Foam::sqrt(dx.value());
+        // dW = dW * dsigma * Foam::sqrt(dx.value());
+        dW /= Foam::sqrt(dx.value());
         dr[i] = dW.value();
         if (i == 0){
  //           U[i][0] = dW.value() ;
@@ -99,8 +100,18 @@ int main(int argc, char *argv[])
         }
         velInit[i] = dF[i];
         velInit[i] = dW.value();
+
         
 //        Info << "Mesh " << C[i][0] << " " << U[i][0] << endl;
+      }
+      // calc mean value of velInit and modify it to mean zero
+      scalar velm(0.0);
+      forAll(velInit, i){
+          velm += velInit[i];
+      }
+      velm /= velInit.size();
+      forAll(velInit, i){
+          velInit[i] -= velm;
       }
     } else {
 
@@ -140,11 +151,11 @@ int main(int argc, char *argv[])
     while (simple.loop(runTime))
     {
 
-        forAll(U, i){
-            scalar dW = rndGen.scalarNormal();
-            velInit[i] = dW;
-            U[i][0] = velInit[i] * barVel.value();
-        }
+        // forAll(U, i){
+        //     scalar dW = rndGen.scalarNormal();
+        //     velInit[i] = dW;
+        //     U[i][0] = velInit[i] * barVel.value();
+        // }
 
         #include "readTimeControls.H"
 
@@ -163,6 +174,9 @@ int main(int argc, char *argv[])
         // Update phi
         //
         phi = fvc::flux(U);
+
+        volDivPhi = fvc::div(phi);
+        volDivU = fvc::div(U);
         
         icount = 0;
         bool cond(true);
@@ -175,17 +189,14 @@ int main(int argc, char *argv[])
             fvScalarMatrix TEqn
             (
                 fvm::ddt(T)
-//               + fvm::div(phi, T)
               - fvm::div(phi, T)
-            //   - T * fvc::div(phi)
               - fvm::laplacian(DT, T)
-            //   + fvm::Sp(fvc::div(phi) - DK + DK*T, T)
+              + fvm::Sp(2*DK*T + fvc::div(U) - DK, T)
               ==
-                fvm::Sp(DK - DK*T, T)
-              - fvm::Sp(fvc::div(phi), T)
-            //   - fvm::SuSp(DK*T-DK*T*T+fvc::div(phi), T)
-            //  ==
-            //     fvOptions(T)
+                // fvm::Sp(DK - DK*T - fvc::div(U), T)
+                // fvm::Sp(DK - 2*DK*T - fvc::div(U), T)
+            //   + fvc::Su(DK*T*T,T)
+                fvc::Su(DK*T*T,T)
             );
 
             TEqn.relax();

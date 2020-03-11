@@ -139,3 +139,34 @@ bool useOldField =
 #include "createPhi.H"
 
 #include "createFvOptions.H"
+
+
+volScalarField volDivPhi
+(
+    IOobject
+    (
+        "volDivPhi",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    fvc::div(phi)
+    // mesh,
+    // dimensionedScalar("volDivPhi", dimless, scalar(0.0))
+);
+
+volScalarField volDivU
+(
+    IOobject
+    (
+        "volDivU",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    fvc::div(U)
+    // mesh,
+    // dimensionedScalar("volDivU", dimless, scalar(0.0))
+);
