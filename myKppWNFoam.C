@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
         dimensionedScalar dW = rndGen.scalarNormal();
         dimensionedScalar dWi = dW * dsigma_t;
         // dW = dW * dsigma * Foam::sqrt(dx.value());
-        dW /= Foam::sqrt(dx.value());
+        dW *= Foam::sqrt(dx.value());
         dr[i] = dW.value();
         if (i == 0){
  //           U[i][0] = dW.value() ;
@@ -118,6 +118,17 @@ int main(int argc, char *argv[])
       Info << "Use existing stochastic field" << nl << endl;
 
     }
+    // volScalarField kExpWn(Foam::exp(-Foam::sqrt(barVel.value())*velInit));
+    // volScalarField kExpWp(Foam::exp(Foam::sqrt(barVel.value())*velInit)*DT);
+    volScalarField kExpWn(Foam::exp(-Foam::sqrt(barVel.value())*velInit));
+    volScalarField kExpWp(Foam::exp(Foam::sqrt(barVel.value())*velInit)*DT);
+    forAll(velInit, i){
+        // scalar tt = Foam::sqrt(barVel.value())*velInit[i];
+        scalar tt = barVel.value() * velInit[i];
+        kExpWn[i] = Foam::exp(-tt);
+        kExpWp[i] = Foam::exp(-tt)*DT.value();
+    }
+
     // Scale the values by barVel
     //
     // scalar vShift = barVel.value()*2.0*dsigma_t;
@@ -186,16 +197,25 @@ int main(int argc, char *argv[])
         {
 
             icount += 1;
+            // fvScalarMatrix TEqn
+            // (
+            //     fvm::ddt(T)
+            //   - fvm::div(phi, T)
+            //   - fvm::laplacian(DT, T)
+            //   + fvm::Sp(2*DK*T + fvc::div(U) - DK, T)
+            //   ==
+            //     // fvm::Sp(DK - DK*T - fvc::div(U), T)
+            //     // fvm::Sp(DK - 2*DK*T - fvc::div(U), T)
+            // //   + fvc::Su(DK*T*T,T)
+            //     fvc::Su(DK*T*T,T)
+            // );
+
             fvScalarMatrix TEqn
             (
                 fvm::ddt(T)
-              - fvm::div(phi, T)
-              - fvm::laplacian(DT, T)
-              + fvm::Sp(2*DK*T + fvc::div(U) - DK, T)
+              - kExpWp * fvm::laplacian(kExpWn, T)
+              + fvm::Sp(2*DK*T - DK, T)
               ==
-                // fvm::Sp(DK - DK*T - fvc::div(U), T)
-                // fvm::Sp(DK - 2*DK*T - fvc::div(U), T)
-            //   + fvc::Su(DK*T*T,T)
                 fvc::Su(DK*T*T,T)
             );
 
