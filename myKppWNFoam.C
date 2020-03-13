@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
         // scalar tt = Foam::sqrt(barVel.value())*velInit[i];
         scalar tt = barVel.value() * velInit[i];
         kExpWn[i] = Foam::exp(-tt);
-        kExpWp[i] = Foam::exp(-tt)*DT.value();
+        kExpWp[i] = Foam::exp( tt)*DT.value();
     }
 
     // Scale the values by barVel
@@ -215,8 +215,9 @@ int main(int argc, char *argv[])
                 fvm::ddt(T)
               - kExpWp * fvm::laplacian(kExpWn, T)
               + fvm::Sp(2*DK*T - DK, T)
+              - fvc::Su(DK*T*T,T)
               ==
-                fvc::Su(DK*T*T,T)
+                fvOptions(T)
             );
 
             TEqn.relax();
