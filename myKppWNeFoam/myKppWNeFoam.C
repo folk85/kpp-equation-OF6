@@ -38,6 +38,7 @@ Description
 
 int main(int argc, char *argv[])
 {
+    Info << "\n The case of 200327_WNexp SHIFT std\n" <<endl;
     #include "setRootCaseLists.H"
     #include "createTime.H"
     #include "createTimeControls.H"
@@ -73,7 +74,7 @@ int main(int argc, char *argv[])
 
     Info << "Theta = " << dtheta.value() << " Sigma = " << dsigma.value()<<endl;
 
-    
+    label nsize = C.size();
     dimensionedScalar dx = Foam::cmptMag(C[1][0] - C[0][0]);
     scalar rcorr(Foam::exp(-dx.value()*dtheta.value()));
     scalar rroot(Foam::sqrt(1.0-rcorr*rcorr));
@@ -92,14 +93,15 @@ int main(int argc, char *argv[])
         dr[i] = dW.value();
         if (i == 0){
  //           U[i][0] = dW.value() ;
-            dF[i] = dWi.value();
+            dF[i] = dW.value();
         } else {
             //U[i][0] = U[i-1][0] + dtheta.value()*(dmean.value() -U[i-1][0] ) * dx.value() + dW.value();
             // U[i][0] = (1.0-dtheta.value()*dx.value()) * U[i-1][0] + dW.value();
-            dF[i] = rcorr * dF[i-1] + rroot * dWi.value();
+//             dF[i] = rcorr * dF[i-1] + rroot * dWi.value();
+            dF[i] = dF[i-1] + dW.value();
         }
         velInit[i] = dF[i];
-        velInit[i] = dW.value();
+//         velInit[i] = dW.value();
 
         
 //        Info << "Mesh " << C[i][0] << " " << U[i][0] << endl;
@@ -138,7 +140,9 @@ int main(int argc, char *argv[])
         U[i][0] = velInit[i] * barVel.value();
         U[i][0] -= vShift.value();
 //         U[i][0] = 2.0;
-      //  U[i][0] = 0.0;
+      
+        U[i][0] = 0.0;
+        
       velm += U[i][0];
     }
     velm /= mesh.C().size();
@@ -188,6 +192,41 @@ int main(int argc, char *argv[])
 
         volDivPhi = fvc::div(phi);
         volDivU = fvc::div(U);
+
+/* Add the shifting W by mean value  NOW we are commenting it. Stay code there */
+
+//         scalar meanV(0);
+//         scalar meanC(0);
+//         label meanI(0);
+//         forAll(mesh.C(),i) {
+//             if (T[i] >= 0.50e0) {
+//                 meanC = C[i].component(0);
+//                 meanV = velInit[i];
+//                 meanI = i;
+//                 break;
+//             }
+//         }
+//         scalar meanV2ind(0);
+//         scalar meanV2(0);
+//         forAll(mesh.C(),i) {
+//             if ((C[i].component(0) - meanC >= -5) & (C[i].component(0) - meanC <= 1.0)) {
+// //                 flamePos = C[i].component(0);
+//                 meanV2 += velInit[i];
+//                 meanV2ind += 1;
+//             }
+//         }
+//         meanV2 /= meanV2ind;
+        
+//         scalar driftAmp(1);
+//         if (runTime.value() <100) {
+//           driftAmp = Foam::exp(runTime.value()/10. - 10.);
+//         }
+//         forAll(velInit, i){
+//             // scalar tt = Foam::sqrt(barVel.value())*velInit[i];
+//             scalar tt = barVel.value() * (velInit[i] - meanV2) * driftAmp;
+//             kExpWn[i] = Foam::exp(-tt);
+//             kExpWp[i] = Foam::exp( tt)*DT.value();
+//         }
         
         icount = 0;
         bool cond(true);
