@@ -54,6 +54,12 @@ int main(int argc, char *argv[])
 
     #include "createFields.H"
 
+    Info << "Read the sdeScheme: " << sdeScheme << endl;
+    word wSdeType("hello");
+    if ( sdeScheme == wSdeType ){
+        Info << " It says Hello! " << endl;
+    }
+
     dimensionedScalar velT = fvc::domainIntegrate(DK * T*(1-T)) ;
     dimensionedScalar vel = fvc::domainIntegrate(DK * T*(1-T)) ;
     dimensionedScalar velRes (fvc::domainIntegrate(Db*xi - DK * T*xi*xi));
@@ -84,25 +90,41 @@ int main(int argc, char *argv[])
 
     if (!useOldField) {
       Info << "Generate a new stochastic field" << nl << endl;
-    forAll(U, i){
-        dimensionedScalar dW = rndGen.scalarNormal();
-        dimensionedScalar dWi = dW * dsigma_t;
-        // dW = dW * dsigma * Foam::sqrt(dx.value());
-        // dW /= Foam::sqrt(dx.value());
-        dr[i] = dW.value();
-        if (i == 0){
- //           U[i][0] = dW.value() ;
-            dF[i] = dWi.value();
-        } else {
-            //U[i][0] = U[i-1][0] + dtheta.value()*(dmean.value() -U[i-1][0] ) * dx.value() + dW.value();
-            // U[i][0] = (1.0-dtheta.value()*dx.value()) * U[i-1][0] + dW.value();
-            dF[i] = rcorr * dF[i-1] + rroot * dWi.value();
-        }
-        velInit[i] = dF[i];
-        // velInit[i] = dW.value();
 
-        
-//        Info << "Mesh " << C[i][0] << " " << U[i][0] << endl;
+      // Set Stochastic field Orstein-Uhlenbeck along the X-space as an initial conditions
+      // It works with the old version of cases. If the variable "sdeScheme" isn't set in transportProperties
+      // then the program uses the O-U process. 
+      //
+      // #include "gen_stoch_field.H"
+
+      word wSdeOU("Orstein");
+      if (sdeScheme == wSdeOU) {
+        forAll(U, i){
+          dimensionedScalar dW = rndGen.scalarNormal();
+          dimensionedScalar dWi = dW * dsigma_t;
+          // dW = dW * dsigma * Foam::sqrt(dx.value());
+          // dW /= Foam::sqrt(dx.value());
+          dr[i] = dW.value();
+          if (i == 0){
+  //           U[i][0] = dW.value() ;
+              dF[i] = dWi.value();
+          } else {
+              //U[i][0] = U[i-1][0] + dtheta.value()*(dmean.value() -U[i-1][0] ) * dx.value() + dW.value();
+              // U[i][0] = (1.0-dtheta.value()*dx.value()) * U[i-1][0] + dW.value();
+              dF[i] = rcorr * dF[i-1] + rroot * dWi.value();
+          }
+          velInit[i] = dF[i];
+          // velInit[i] = dW.value();
+        }
+      }
+      word wSdeWN("WhiteNoise");
+      if (sdeScheme == wSdeWN) {
+        forAll(U, i){
+          dimensionedScalar dW = rndGen.scalarNormal();
+          dW /= Foam::sqrt(dx.value());
+          dr[i] = dW.value();
+          velInit[i] = dW.value();
+        }
       }
       // calc mean value of velInit and modify it to mean zero
       scalar velm(0.0);
@@ -136,13 +158,13 @@ int main(int argc, char *argv[])
     }
     vels /= mesh.C().size();
     Info << "VelField "<<velm <<" "<< vels << endl;
-    std::ofstream file;
-    // file.open("res.dat",std::ofstream::out| std::ofstream::app);
-    file.open("res.dat",std::ofstream::out);
-    forAll(dF, i) {
-      file << i<<","<< C[i][0] << ',' << velInit[i]<<","<<U[i][0] << ',' << dr[i]<<std::endl;
-    }
-    file.close();
+    // std::ofstream file;
+    // // file.open("res.dat",std::ofstream::out| std::ofstream::app);
+    // file.open("res.dat",std::ofstream::out);
+    // forAll(dF, i) {
+    //   file << i<<","<< C[i][0] << ',' << velInit[i]<<","<<U[i][0] << ',' << dr[i]<<std::endl;
+    // }
+    // file.close();
 
     #include "setInitialDeltaT.H"
 

@@ -132,6 +132,15 @@ dimensionedScalar vShift
     transportProperties.lookup("vShift")
 );
 
+// Set the option to choose the model of Stochastic field generation
+//
+word sdeDef("Ornstein");
+word sdeScheme
+(
+    transportProperties.lookupOrDefault("sdeScheme",sdeDef )
+);
+
+
 bool useOldField =
     runTime.controlDict().lookupOrDefault("useOldField", false);
 

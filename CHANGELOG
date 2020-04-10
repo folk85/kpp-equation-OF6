@@ -1,3 +1,18 @@
+2020-04-10
+
+Add option `sdeScheme` to choose the Stochastic field. Now there are two options:
+
+- Ornstein  -- generate Ornstein-Uhlenbeck stochastic field
+- WhiteNoise -- generate White noise velocity field
+
+Currently both gen method work in one-D X-space. 
+
+By Default set Stochastic field Orstein-Uhlenbeck along the X-space as an initial conditions
+It works with the old version of cases. If the variable "sdeScheme" isn't set in transportProperties,
+then the program uses the O-U process. 
+
+
+
 В уравнение со сверткой myKppOUNeFoam Добавили код с выделением среднего значения винеровского процесса в области пламени. Проверяли возможность применения такого преобразования для упрощения решения при больших амплитудах. Сейчас код закомментирован. 
 
 2020-03-16
