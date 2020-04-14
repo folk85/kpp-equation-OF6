@@ -1,3 +1,10 @@
+2020-04-14
+
+Set dynamical stochastic fields, which changing during the time. 
+
+- OrsteinTime -- generate 2D Orstein-Uhlenbeck stochastic field by scheme [Krasheninnikov]. It considers exponentional delay by time  and space
+- WhiteNoiseTime -- generate new white nois field at every timestep.
+
 2020-04-10
 
 Add option `sdeScheme` to choose the Stochastic field. Now there are two options:

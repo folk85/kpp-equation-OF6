@@ -79,13 +79,14 @@ int main(int argc, char *argv[])
 
     Info << "Theta = " << dtheta.value() << " Sigma = " << dsigma.value()<<endl;
 
-    
+    // scalar timeo = runTime.time();
     dimensionedScalar dx = Foam::cmptMag(C[1][0] - C[0][0]);
     scalar rcorr(Foam::exp(-dx.value()*dtheta.value()));
     scalar rroot(Foam::sqrt(1.0-rcorr*rcorr));
     scalar dsigma_t = dsigma.value() / Foam::sqrt(2.0 * dtheta.value());
     Info << "dx = " << dx.value() << " corr = " << rcorr << " sqrt(r) = "<< rroot<< nl << endl;
     List<scalar> dF(C.size());
+    List<scalar> dFo(C.size());
     List<scalar> dr(C.size());
 
     if (!useOldField) {
@@ -97,8 +98,9 @@ int main(int argc, char *argv[])
       //
       // #include "gen_stoch_field.H"
 
-      word wSdeOU("Orstein");
-      if (sdeScheme == wSdeOU) {
+      // word wSdeOU("Orstein");
+      // if (sdeScheme == wSdeOU ) {
+      if (sdeScheme == word("Orstein") || sdeScheme == word("OrsteinTime") ) {
         forAll(U, i){
           dimensionedScalar dW = rndGen.scalarNormal();
           dimensionedScalar dWi = dW * dsigma_t;
@@ -116,9 +118,10 @@ int main(int argc, char *argv[])
           velInit[i] = dF[i];
           // velInit[i] = dW.value();
         }
-      }
-      word wSdeWN("WhiteNoise");
-      if (sdeScheme == wSdeWN) {
+      // }
+      // word wSdeWN("WhiteNoise");
+      // if (sdeScheme == wSdeWN) {
+      } else if (sdeScheme == word("WhiteNoise")|| sdeScheme == word("WhiteNoiseTime")) {
         forAll(U, i){
           dimensionedScalar dW = rndGen.scalarNormal();
           dW /= Foam::sqrt(dx.value());
@@ -188,11 +191,44 @@ int main(int argc, char *argv[])
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
 //             // Update velocity
-//             vel = fvc::domainIntegrate(DK * T*(1-T)) ;
-//             velT = fvc::domainIntegrate(DK * T*T*(1-T))       ; 
-//             forAll(U,i){
-//                 U[i][0] = vel.value();
-//             }
+        if (sdeScheme == word("OrsteinTime") ) {
+          forAll(dF , i) {
+            dFo[i] = dF[i];
+          }
+          scalar rcorry(Foam::exp(-(runTime.deltaTValue())*dtau.value()));
+          // timeo = runTime.deltaTValue();
+          scalar rrooty(Foam::sqrt(1.0-rcorry*rcorry));
+          forAll(U, i){
+            dimensionedScalar dW = rndGen.scalarNormal();
+            dimensionedScalar dWi = dW * dsigma_t;
+            // dW = dW * dsigma * Foam::sqrt(dx.value());
+            // dW /= Foam::sqrt(dx.value());
+            dr[i] = dW.value();
+            if (i == 0){
+    //           U[i][0] = dW.value() ;
+                dF[i] = rcorry * dFo[i] + rrooty * dWi.value();
+            } else {
+                //U[i][0] = U[i-1][0] + dtheta.value()*(dmean.value() -U[i-1][0] ) * dx.value() + dW.value();
+                // U[i][0] = (1.0-dtheta.value()*dx.value()) * U[i-1][0] + dW.value();
+                dF[i] = rcorr * dF[i-1] + rcorry * dFo[i] - rcorr * rcorry * dFo[i-1] + rroot * rrooty * dWi.value();
+            }
+            velInit[i] = dF[i];
+
+            U[i][0] = velInit[i] * barVel.value();
+
+            // velInit[i] = dW.value();
+          }
+        // }
+        // word wSdeWN("WhiteNoise");
+        // if (sdeScheme == wSdeWN) {
+        } else if (sdeScheme == word("WhiteNoiseTime")) {
+          forAll(U, i){
+            dimensionedScalar dW = rndGen.scalarNormal();
+            dW /= Foam::sqrt(dx.value());
+            velInit[i] = dW.value();
+            U[i][0] = velInit[i] * barVel.value();
+          }
+        }
         // Update phi
         //
         phi = fvc::flux(U);
@@ -274,7 +310,13 @@ int main(int argc, char *argv[])
             }
         }
         meanVel /= mesh.C().size();
-        Info<< nl << "Velocity = " << vel.value()<< " " << velRes.value() << " " << tvel.value() << " " << flamePos << " " << Foam::gMax(T.internalField()) << " " << Foam::gMax(xi.internalField())<< " " << meanVel << nl << endl;
+        Info << "ForCorr" ;
+        for (int i=1;i<8;i++){
+          // Info << " "<< U[i*100][0];
+          printf(" %g",U[i*100][0]);
+        }
+        Info << endl;
+        Info<< nl << "Velocity = " << vel.value()<< " " << velRes.value() << " " << tvel.value() << " " << flamePos << " " << Foam::gMax(T.internalField()) << " " << Foam::gMax(xi.internalField())<< " " << meanVel << nl << endl;      
         // Info<< "phi = " << phi.value()<< " " << velRes.value() << nl << endl;
 
         runTime.write();

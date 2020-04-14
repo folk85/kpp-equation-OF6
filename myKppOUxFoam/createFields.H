@@ -140,6 +140,11 @@ word sdeScheme
     transportProperties.lookupOrDefault("sdeScheme",sdeDef )
 );
 
+dimensionedScalar dtau
+(
+    transportProperties.lookupOrDefault("dtau", dtheta)
+);
+
 
 bool useOldField =
     runTime.controlDict().lookupOrDefault("useOldField", false);
