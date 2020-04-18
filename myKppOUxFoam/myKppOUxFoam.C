@@ -77,7 +77,12 @@ int main(int argc, char *argv[])
     dimensionedScalar tvel(0.0);
     // dimensionedScalar dsigma = Foam::sqrt(2.0e0 * dtheta);
 
-    Info << "Theta = " << dtheta.value() << " Sigma = " << dsigma.value()<<endl;
+    Info << "sdeScheme = " << sdeScheme << endl ;
+    Info << "theta = " << dtheta.value() << endl ;
+    Info << "tau = " << dtau.value() << endl ;
+    Info << "barVel = " << barVel.value() << endl ;
+    Info << "sdeScheme = " << sdeScheme << endl ;
+    Info << "sigma = " << dsigma.value() << endl ;
 
     // scalar timeo = runTime.time();
     dimensionedScalar dx = Foam::cmptMag(C[1][0] - C[0][0]);
@@ -100,7 +105,7 @@ int main(int argc, char *argv[])
 
       // word wSdeOU("Orstein");
       // if (sdeScheme == wSdeOU ) {
-      if (sdeScheme == word("Orstein") || sdeScheme == word("OrsteinTime") ) {
+      if (sdeScheme == word("Orstein")) {
         forAll(U, i){
           dimensionedScalar dW = rndGen.scalarNormal();
           dimensionedScalar dWi = dW * dsigma_t;
@@ -118,9 +123,19 @@ int main(int argc, char *argv[])
           velInit[i] = dF[i];
           // velInit[i] = dW.value();
         }
-      // }
-      // word wSdeWN("WhiteNoise");
-      // if (sdeScheme == wSdeWN) {
+      }else if (sdeScheme == word("OrsteinTime") ) {
+        dsigma_t = 0.5e0 * Foam::sqrt(dtau.value() * dtheta.value());
+        forAll(U, i){
+          dimensionedScalar dW = rndGen.scalarNormal();
+          dimensionedScalar dWi = dW * dsigma_t;
+          dr[i] = dW.value();
+          if (i == 0){
+              dF[i] = dWi.value();
+          } else {
+              dF[i] = rcorr * dF[i-1] + rroot * dWi.value();
+          }
+          velInit[i] = dF[i];
+        }
       } else if (sdeScheme == word("WhiteNoise")|| sdeScheme == word("WhiteNoiseTime")) {
         forAll(U, i){
           dimensionedScalar dW = rndGen.scalarNormal();
@@ -131,13 +146,13 @@ int main(int argc, char *argv[])
       }
       // calc mean value of velInit and modify it to mean zero
       scalar velm(0.0);
-      forAll(velInit, i){
-          velm += velInit[i];
-      }
-      velm /= velInit.size();
-      forAll(velInit, i){
-          velInit[i] -= velm;
-      }
+      // forAll(velInit, i){
+      //     velm += velInit[i];
+      // }
+      // velm /= velInit.size();
+      // forAll(velInit, i){
+      //     velInit[i] -= velm;
+      // }
     } else {
 
       Info << "Use existing stochastic field" << nl << endl;
@@ -195,6 +210,9 @@ int main(int argc, char *argv[])
           forAll(dF , i) {
             dFo[i] = dF[i];
           }
+
+          dsigma_t = 0.5e0 * Foam::sqrt(dtau.value() * dtheta.value());
+          //
           scalar rcorry(Foam::exp(-(runTime.deltaTValue())*dtau.value()));
           // timeo = runTime.deltaTValue();
           scalar rrooty(Foam::sqrt(1.0-rcorry*rcorry));

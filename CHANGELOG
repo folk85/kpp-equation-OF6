@@ -1,3 +1,11 @@
+2020-04-18
+
+- Fix dynamic OU process according the new recommedations. Dispersion of the system equals  SQRT(\tau * \theta).
+
+- Refuse the velocity shifting to set Mean Value to Zero. This operation was used for stochastic field by space only. 
+
+- Add the IO infomation of theta, tau, barVel and SDE_Scheme
+
 2020-04-14
 
 Set dynamical stochastic fields, which changing during the time. 
