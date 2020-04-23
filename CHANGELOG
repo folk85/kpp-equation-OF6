@@ -1,3 +1,7 @@
+2020-04-22
+
+- Add Dinamic White Noise field.
+
 2020-04-18
 
 - Fix dynamic OU process according the new recommedations. Dispersion of the system equals  SQRT(\tau * \theta).

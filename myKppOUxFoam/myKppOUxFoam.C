@@ -240,9 +240,12 @@ int main(int argc, char *argv[])
         // word wSdeWN("WhiteNoise");
         // if (sdeScheme == wSdeWN) {
         } else if (sdeScheme == word("WhiteNoiseTime")) {
+          scalar dvar= Foam::sqrt(dx.value() * runTime.deltaTValue());
           forAll(U, i){
             dimensionedScalar dW = rndGen.scalarNormal();
-            dW /= Foam::sqrt(dx.value());
+            dW /= dvar;
+            // dW /= Foam::sqrt(dx.value());
+            // dW /= Foam::sqrt(runTime.deltaTValue());
             velInit[i] = dW.value();
             U[i][0] = velInit[i] * barVel.value();
           }
