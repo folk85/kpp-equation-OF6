@@ -1,6 +1,11 @@
+2020-04-29
+
+- Set Normalized equation with Dynamic Orstein-Uhlenbbeck named (sdeScheme == "OrsteinTimeN"). 
+- Define  mean velocity at every timeStep ($<V> = \int_{0}^{L} U*(1-U) dx$) with Dynamic Orstein-Uhlenbbeck named (sdeScheme == "OrsteinTimeM"). 
+
 2020-04-22
 
-- Add Dinamic White Noise field.
+- Add Dynamic White Noise field.
 
 2020-04-18
 
@@ -15,7 +20,7 @@
 Set dynamical stochastic fields, which changing during the time. 
 
 - OrsteinTime -- generate 2D Orstein-Uhlenbeck stochastic field by scheme [Krasheninnikov]. It considers exponentional delay by time  and space
-- WhiteNoiseTime -- generate new white nois field at every timestep.
+- WhiteNoiseTime -- generate new white noise field at every timestep.
 
 2020-04-10
 

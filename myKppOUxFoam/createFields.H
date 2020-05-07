@@ -145,6 +145,20 @@ dimensionedScalar dtau
     transportProperties.lookupOrDefault("dtau", dtheta)
 );
 
+scalar deps
+(
+    transportProperties.lookupOrDefault("dimt", scalar(1.0))
+);
+scalar dnu 
+(
+    transportProperties.lookupOrDefault("dimx", scalar(1.0))
+);
+
+if (sdeScheme == word("OrsteinTimeN")) {
+    DT = DT * dnu * dnu / deps;
+    barVel = barVel * dnu / deps; 
+    DK = DK / deps; 
+}
 
 bool useOldField =
     runTime.controlDict().lookupOrDefault("useOldField", false);

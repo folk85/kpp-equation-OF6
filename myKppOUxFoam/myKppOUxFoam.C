@@ -63,6 +63,8 @@ int main(int argc, char *argv[])
     dimensionedScalar velT = fvc::domainIntegrate(DK * T*(1-T)) ;
     dimensionedScalar vel = fvc::domainIntegrate(DK * T*(1-T)) ;
     dimensionedScalar velRes (fvc::domainIntegrate(Db*xi - DK * T*xi*xi));
+    dimensionedScalar vel_mean = velT;
+    dimensionedScalar vel_meano = velT;
     // scalar TInitialResidual(1.0);
     // scalar xiInitialResidual(1.0);
     label icount(0);
@@ -83,6 +85,8 @@ int main(int argc, char *argv[])
     Info << "barVel = " << barVel.value() << endl ;
     Info << "sdeScheme = " << sdeScheme << endl ;
     Info << "sigma = " << dsigma.value() << endl ;
+    Info << "deps = " << deps << endl ;
+    Info << "dnu = " << dnu << endl ;
 
     // scalar timeo = runTime.time();
     dimensionedScalar dx = Foam::cmptMag(C[1][0] - C[0][0]);
@@ -125,6 +129,24 @@ int main(int argc, char *argv[])
         }
       }else if (sdeScheme == word("OrsteinTime") ) {
         dsigma_t = 0.5e0 * Foam::sqrt(dtau.value() * dtheta.value());
+        forAll(U, i){
+          dimensionedScalar dW = rndGen.scalarNormal();
+          dimensionedScalar dWi = dW * dsigma_t;
+          dr[i] = dW.value();
+          if (i == 0){
+              dF[i] = dWi.value();
+          } else {
+              dF[i] = rcorr * dF[i-1] + rroot * dWi.value();
+          }
+          velInit[i] = dF[i];
+        }
+      }else if (sdeScheme == word("OrsteinTimeN") ) {
+        
+        rcorr = Foam::exp(-dx.value()*dtheta.value() / dnu);
+        rroot = Foam::sqrt(1.0-rcorr*rcorr);
+
+        dsigma_t = 0.5e0 * Foam::sqrt(dtau.value() * dtheta.value());
+        // dsigma_t /= Foam::sqrt(deps * dnu);
         forAll(U, i){
           dimensionedScalar dW = rndGen.scalarNormal();
           dimensionedScalar dWi = dW * dsigma_t;
@@ -233,12 +255,77 @@ int main(int argc, char *argv[])
             velInit[i] = dF[i];
 
             U[i][0] = velInit[i] * barVel.value();
+            U[i][0] -= vShift.value();
 
             // velInit[i] = dW.value();
           }
-        // }
-        // word wSdeWN("WhiteNoise");
-        // if (sdeScheme == wSdeWN) {
+        } else if (sdeScheme == word("OrsteinTimeM") ) {
+          forAll(dF , i) {
+            dFo[i] = dF[i];
+          }
+
+          dsigma_t = 0.5e0 * Foam::sqrt(dtau.value() * dtheta.value());
+          //
+          scalar rcorry(Foam::exp(-(runTime.deltaTValue())*dtau.value()));
+          // timeo = runTime.deltaTValue();
+          scalar rrooty(Foam::sqrt(1.0-rcorry*rcorry));
+
+          vel_mean = vel* 0.1 + vel_meano * 0.9;
+          forAll(U, i){
+            dimensionedScalar dW = rndGen.scalarNormal();
+            dimensionedScalar dWi = dW * dsigma_t;
+            // dW = dW * dsigma * Foam::sqrt(dx.value());
+            // dW /= Foam::sqrt(dx.value());
+            dr[i] = dW.value();
+            if (i == 0){
+    //           U[i][0] = dW.value() ;
+                dF[i] = rcorry * dFo[i] + rrooty * dWi.value();
+            } else {
+                //U[i][0] = U[i-1][0] + dtheta.value()*(dmean.value() -U[i-1][0] ) * dx.value() + dW.value();
+                // U[i][0] = (1.0-dtheta.value()*dx.value()) * U[i-1][0] + dW.value();
+                dF[i] = rcorr * dF[i-1] + rcorry * dFo[i] - rcorr * rcorry * dFo[i-1] + rroot * rrooty * dWi.value();
+            }
+            velInit[i] = dF[i];
+
+            U[i][0] = velInit[i] * barVel.value();
+            U[i][0] -= vShift.value();
+            U[i][0] -= vel_mean.value() ;
+
+            // velInit[i] = dW.value();
+          }
+          vel_meano = vel;
+        } else if (sdeScheme == word("OrsteinTimeN") ) {
+          forAll(dF , i) {
+            dFo[i] = dF[i];
+          }
+
+          dsigma_t = 0.5e0 * Foam::sqrt(dtau.value() * dtheta.value());
+          // dsigma_t /= Foam::sqrt(deps * dnu);
+          //
+          scalar rcorry(Foam::exp(-(runTime.deltaTValue())*dtau.value() / deps));
+          // timeo = runTime.deltaTValue();
+          scalar rrooty(Foam::sqrt(1.0-rcorry*rcorry));
+          forAll(U, i){
+            dimensionedScalar dW = rndGen.scalarNormal();
+            dimensionedScalar dWi = dW * dsigma_t;
+            // dW = dW * dsigma * Foam::sqrt(dx.value());
+            // dW /= Foam::sqrt(dx.value());
+            dr[i] = dW.value();
+            if (i == 0){
+    //           U[i][0] = dW.value() ;
+                dF[i] = rcorry * dFo[i] + rrooty * dWi.value();
+            } else {
+                //U[i][0] = U[i-1][0] + dtheta.value()*(dmean.value() -U[i-1][0] ) * dx.value() + dW.value();
+                // U[i][0] = (1.0-dtheta.value()*dx.value()) * U[i-1][0] + dW.value();
+                dF[i] = rcorr * dF[i-1] + rcorry * dFo[i] - rcorr * rcorry * dFo[i-1] + rroot * rrooty * dWi.value();
+            }
+            velInit[i] = dF[i];
+
+            U[i][0] = velInit[i] * barVel.value();
+            U[i][0] -= vShift.value();
+
+            // velInit[i] = dW.value();
+          }
         } else if (sdeScheme == word("WhiteNoiseTime")) {
           scalar dvar= Foam::sqrt(dx.value() * runTime.deltaTValue());
           forAll(U, i){
@@ -248,6 +335,7 @@ int main(int argc, char *argv[])
             // dW /= Foam::sqrt(runTime.deltaTValue());
             velInit[i] = dW.value();
             U[i][0] = velInit[i] * barVel.value();
+            U[i][0] -= vShift.value();
           }
         }
         // Update phi
