@@ -33,6 +33,7 @@ Description
 #include "fvOptions.H"
 #include "simpleControl.H"
 #include "Random.H"
+#include <random>
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -97,6 +98,7 @@ int main(int argc, char *argv[])
     List<scalar> dF(C.size());
     List<scalar> dFo(C.size());
     List<scalar> dr(C.size());
+    label nel = C.size();
 
     if (!useOldField) {
       Info << "Generate a new stochastic field" << nl << endl;
@@ -110,6 +112,7 @@ int main(int argc, char *argv[])
       // word wSdeOU("Orstein");
       // if (sdeScheme == wSdeOU ) {
       if (sdeScheme == word("Orstein")) {
+        dsigma_t = Foam::sqrt(0.5e0 * dtheta.value());
         forAll(U, i){
           dimensionedScalar dW = rndGen.scalarNormal();
           dimensionedScalar dWi = dW * dsigma_t;
@@ -164,6 +167,50 @@ int main(int argc, char *argv[])
           dW /= Foam::sqrt(dx.value());
           dr[i] = dW.value();
           velInit[i] = dW.value();
+        }
+      } else if (sdeScheme == word("Poisson")) {
+
+        Info << "Calculate RTN" << endl;
+        // set the poisson distribution
+        std::default_random_engine generator;
+        std::poisson_distribution<int> distribution(1.0/dx.value());
+
+        label n1 = label(1.0 * 10000/dx.value()) * 10 ;
+        label icnto = 0 ;
+        label icnt = 0 ;
+        scalar isgn = 1. ;
+        scalar dW = rndGen.scalarNormal();
+        if (dW < 0.5){
+          isgn = -1.0;
+         }
+        Info << "First element "<< isgn << endl;
+        for (label i = 0; i < n1; i++)
+        {
+          label np = distribution(generator);
+          icnt += np;
+
+          Info << "Gen " << np << " " << icnto << " " << icnt <<" " << isgn << endl;
+          if (icnt > nel) {
+            icnt = nel;
+          }
+          if ( np != 0) {
+            for (label j=icnto;j<icnt; j++){
+              dF[j] = isgn;
+            }
+          }
+          icnto = icnt;
+          if (isgn < 0){
+            isgn = 1.0;
+          }else {
+            isgn = -1.0;
+          }
+          if (icnt >= nel) {
+            break;
+          }
+        }
+        
+        forAll(U, i){
+          velInit[i] = dF[i];
         }
       }
       // calc mean value of velInit and modify it to mean zero
@@ -369,7 +416,7 @@ int main(int argc, char *argv[])
             TEqn.relax();
             fvOptions.constrain(TEqn);
             // TEqn.solve();
-            scalar TInitialResidual = TEqn.solve().initialResidual();
+            scalar TInitialResidual = TEqn.solve().finalResidual();
             fvOptions.correct(T);
 
             /*fvScalarMatrix xiEqn
