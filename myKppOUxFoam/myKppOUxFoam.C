@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
         rroot = Foam::sqrt(1.0-rcorr*rcorr);
 
         dsigma_t = 0.5e0 * Foam::sqrt(dtau.value() * dtheta.value());
-        // dsigma_t /= Foam::sqrt(deps * dnu);
+        dsigma_t /= Foam::sqrt(deps * dnu);
         forAll(U, i){
           dimensionedScalar dW = rndGen.scalarNormal();
           dimensionedScalar dWi = dW * dsigma_t;
@@ -300,7 +300,7 @@ int main(int argc, char *argv[])
           }
 
           dsigma_t = 0.5e0 * Foam::sqrt(dtau.value() * dtheta.value());
-          // dsigma_t /= Foam::sqrt(deps * dnu);
+          dsigma_t /= Foam::sqrt(deps * dnu);
           //
           scalar rcorry(Foam::exp(-(runTime.deltaTValue())*dtau.value() / deps));
           // timeo = runTime.deltaTValue();
@@ -395,6 +395,11 @@ int main(int argc, char *argv[])
             // Info<< "Residuals = " << TEqn.solve().max().initialResidual() << " " << xiEqn.solve().max().initialResidual()  << endl;
             Info<< "Residuals = " << TInitialResidual << " " << xiInitialResidual << " Cnt = "<< icount  << endl;
 
+            // // cut-off the upper and lower bounds to 1 and 0
+            // forAll(T,i) {
+            //   T[i] = Foam::max(Foam::min(T[i] , 1) , 0);
+            // }
+
             if (TInitialResidual<1.0e-5 && xiInitialResidual < 1.0e-5) {
                 cond = false ;
             }
@@ -407,7 +412,7 @@ int main(int argc, char *argv[])
         vel = fvc::domainIntegrate(DK * T*(1-T)) ;
         velT = fvc::domainIntegrate(DK * T*T*(1-T)) ;
         velRes = fvc::domainIntegrate(Db*xi - DK * T*xi*xi) ;
-        scalar flamePos(0.0);
+        scalar flamePos(-1.0);
         scalar meanVel(0.0);
         forAll(mesh.C(),i) {
             meanVel += U[i][0];
@@ -418,6 +423,9 @@ int main(int argc, char *argv[])
                 break;
             }
         }
+        // if (flamePos < 0.0) {
+        //   flamePos  = C[i].component(0);
+        // }
         meanVel /= mesh.C().size();
         Info << "ForCorr" ;
         for (int i=1;i<8;i++){
