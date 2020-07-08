@@ -1,3 +1,8 @@
+2020-07-08
+
+- Optimize the Random field generation. Replace dimensional vars to scalars. It makes good performance for time depended Random fields 
+- Add Random telegraph Noise 
+
 2020-04-29
 
 - Set Normalized equation with Dynamic Orstein-Uhlenbbeck named (sdeScheme == "OrsteinTimeN"). 
