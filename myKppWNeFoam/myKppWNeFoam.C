@@ -262,7 +262,7 @@ int main(int argc, char *argv[])
             TEqn.relax();
             fvOptions.constrain(TEqn);
             // TEqn.solve();
-            scalar TInitialResidual = TEqn.solve().initialResidual();
+            scalar TInitialResidual = TEqn.solve().finalResidual();
             fvOptions.correct(T);
 
             /*fvScalarMatrix xiEqn
