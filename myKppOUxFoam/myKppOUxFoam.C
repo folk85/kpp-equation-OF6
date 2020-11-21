@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
 
       // word wSdeOU("Orstein");
       // if (sdeScheme == wSdeOU ) {
-      if ((sdeScheme == word("Orstein"))||(sdeScheme == word("OrsteinTime") )) {
+      if ((sdeScheme == word("Orstein"))||(sdeScheme == word("OrsteinTime"))||(sdeScheme == word("OrsteinTimeF1") ) ) {
         dsigma_t = Foam::sqrt(0.5e0 * dtheta.value());
         forAll(U, i){
           // dimensionedScalar dW = rndGen.scalarNormal();
@@ -295,14 +295,18 @@ int main(int argc, char *argv[])
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
 //             // Update velocity
-        if (sdeScheme == word("OrsteinTime") ) {
+        if ((sdeScheme == word("OrsteinTime") )|| (sdeScheme == word("OrsteinTimeF1") )) {
           forAll(dF , i) {
             dFo[i] = dF[i];
           }
 
           dsigma_t = 0.5e0 * Foam::sqrt(dtau.value() * dtheta.value());
-          //
           scalar rcorry(Foam::exp(-(runTime.deltaTValue())*dtau.value()));
+          if ( sdeScheme == word("OrsteinTimeF1") ) {
+            scalar dtau_new = dtheta.value() * 0.25e0 * barVel.value() * dtheta.value() * barVel.value() * dtheta.value();
+            dsigma_t = 0.5e0 * Foam::sqrt(dtau_new * dtheta.value());
+            rcorry = Foam::exp(-(runTime.deltaTValue()) * dtau_new);
+          }         
           // timeo = runTime.deltaTValue();
           scalar rrooty(Foam::sqrt(1.0-rcorry*rcorry));
           forAll(U, i){
