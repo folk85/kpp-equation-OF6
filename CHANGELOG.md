@@ -1,3 +1,7 @@
+2020-12-24
+
+- Add Stochastic Burgers equation with  initial spectrum of velocity by Ornstein-Uhlenbeck.
+
 2020-07-08
 
 - Optimize the Random field generation. Replace dimensional vars to scalars. It makes good performance for time depended Random fields 

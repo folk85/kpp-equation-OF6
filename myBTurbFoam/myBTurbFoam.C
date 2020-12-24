@@ -35,7 +35,14 @@ Description
 #include "Random.H"
 #include <random>
 
+#define NMODES 20
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+scalar get_ee(scalar kk, scalar theta){
+  return theta / 2.0 / 3.1415 / (kk * kk + theta * theta);
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -275,6 +282,73 @@ int main(int argc, char *argv[])
 
     #include "setInitialDeltaT.H"
 
+    // set forcing coefficients for Burgers equation
+
+    Info << "Set forcing sources" << endl;
+
+    std::random_device rdt;
+    std::mt19937 gen_ts(rdt()); // clockTime.getTime()
+
+    // std::poisson_distribution<int> poisson_delta(10.0 / dx);
+    std::poisson_distribution<int> poisson_delta(10);
+
+    scalar dfreq = 2.0 * 3.1415 / dx / C.size();
+    List<scalar> kfreq(NMODES);
+    for (int i = 0; i < NMODES; i++)
+    {
+      kfreq[i] = dfreq * (i + 1);
+    }
+    
+    List<scalar> qamp(NMODES);
+    scalar qamptmp = dtheta.value() * barVel.value();
+    for (int i = 0; i < NMODES; i++)
+    {
+      qamp[i] = qamptmp * 0.5 / 3.1415 / (kfreq[i] * kfreq[i] + qamptmp * qamptmp);
+      qamp[i] = Foam::sqrt(qamp[i] * dfreq);
+    }
+    List<scalar> modesa(NMODES);
+    List<scalar> modesb(NMODES);
+    scalar time_change = runTime.value();
+    scalar dtime_delta = dx * dx * 0.8 ;
+    label nsteps = poisson_delta(gen_ts);
+    scalar maxa(-1.0);
+    scalar maxb(-1.0);
+    
+    scalar magnitude = 1.0e-5;
+    
+    time_change += dtime_delta * nsteps;
+    printf("Initialize forcing modes. Get N_iters: %d , Next update after: %g\n", nsteps, time_change);
+
+    for (int i = 0; i < NMODES; i++)
+    {
+      modesa[i] = rndGen.scalarNormal();
+      modesb[i] = rndGen.scalarNormal();
+      // if (abs(modesa[i]) > maxa)
+      // maxa = abs(modesa[i]);
+      // if (abs(modesb[i]) > maxb)
+      // maxb = abs(modesb[i]);
+    }
+    // for (int i = 0; i < NMODES; i++)
+    // {
+    //   modesa[i] /= maxa;
+    //   modesb[i] /= maxb;
+    // }
+    Info << "volVectorField forcing" << endl;
+    for (int i = 0; i < C.size(); i++)
+    {
+      scalar dtmp = 0.0e0;
+      for (int j = 0; j < NMODES; j++)
+      {
+        dtmp += qamp[j] * (modesa[j] * Foam::cos(kfreq[j] * C[i].component(0)) + modesb[j] * Foam::sin(kfreq[j] * C[i].component(0)));
+      }
+      // printf("forcing[%d] = %g  cos = %g   sin = %g\n", i, dtmp, Foam::cos(kfreq[i] * C[i].component(0)), Foam::sin(kfreq[i] * C[i].component(0)));
+      forcing[i][0] = dtmp * magnitude;
+      // forcing[i][0] = 0.0;
+      forcing[i][1] = 0.0;
+      forcing[i][2] = 0.0;
+    }
+    
+    
     Info << "Start timesteps" << endl;
 
     while (simple.loop(runTime))
@@ -293,6 +367,44 @@ int main(int argc, char *argv[])
         #include "setDeltaT.H"
 
         Info<< "Time = " << runTime.timeName() << nl << endl;
+
+        // Update random variables for forcing
+        if (runTime.value() >= time_change){
+
+          nsteps = poisson_delta(gen_ts);
+          // Info << "update forcing modes " << nsteps << endl;
+          time_change = runTime.value() + dtime_delta * nsteps;
+          printf("Update forcing modes. Get N_iters: %d , Next update after: %g\n", nsteps, time_change);
+          maxa = -1.0;
+          maxb = -1.0;
+          for (int i = 0; i < NMODES; i++)
+          {
+            modesa[i] = rndGen.scalarNormal();
+            modesb[i] = rndGen.scalarNormal();
+            // if (abs(modesa[i]) > maxa)
+            //   maxa = abs(modesa[i]);
+            // if (abs(modesb[i]) > maxb)
+            //   maxb = abs(modesb[i]);
+          }
+          // for (int i = 0; i < NMODES; i++)
+          // {
+          //   modesa[i] /= maxa;
+          //   modesb[i] /= maxb;
+          // }
+          for (int i = 0; i < C.size(); i++)
+          {
+            scalar dtmp = 0.0e0;
+            for (int j = 0; j < NMODES; j++)
+            {
+              dtmp += qamp[j] * (modesa[j] * Foam::cos(kfreq[j] * C[i].component(0)) + modesb[j] * Foam::sin(kfreq[j] * C[i].component(0)));
+            }
+            forcing[i][0] = dtmp * magnitude;
+            // forcing[i][0] = 0.0;
+            forcing[i][1] = 0.0;
+            forcing[i][2] = 0.0;
+          }
+          Info << "End updating forcing modes" << endl;
+        }
 
 //             // Update velocity
         if ((sdeScheme == word("OrsteinTime") )|| (sdeScheme == word("OrsteinTimeF1") )) {
@@ -430,22 +542,23 @@ int main(int argc, char *argv[])
         {
 
             icount += 1;
-	    Vector<scalar> UInitialResidual;
-	    for (int i = 0; i < 5; i++) {
-		    fvVectorMatrix UEqn
-		    (
-			 fvm::ddt(U)
-		       + 0.5 * fvm::div(phi, U)
-		       ==
-			 fvm::laplacian(nu, U)
-		    );
+      Vector<scalar> UInitialResidual;
+      for (int i = 0; i < 5; i++) {
+        fvVectorMatrix UEqn
+        (
+       fvm::ddt(U)
+           + 0.5 * fvm::div(phi, U)
+           - fvm::laplacian(nu, U)
+           ==
+          fvc::Su(forcing, U)
+        );
 
-		    UEqn.relax();
-		// fvOptions.constrain(UEqn);
-		    UInitialResidual = UEqn.solve().finalResidual();
-		    // phi = fvc::flux(U);
-		    phi = fvc::interpolate(U) & mesh.Sf();
-	    }
+        UEqn.relax();
+    // fvOptions.constrain(UEqn);
+        UInitialResidual = UEqn.solve().finalResidual();
+        // phi = fvc::flux(U);
+        phi = fvc::interpolate(U) & mesh.Sf();
+      }
         // fvOptions.correct(UEqn);
 
 

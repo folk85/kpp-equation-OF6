@@ -55,6 +55,21 @@ volVectorField U
     mesh
 );
 
+volVectorField forcing
+(
+    IOobject
+    (
+        "forcing",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::NO_WRITE
+    ),
+    // dimension(0,0,0,0,0,0,0),
+    mesh
+);
+
+
 Info<< "Reading transportProperties\n" << endl;
 
 IOdictionary transportProperties
