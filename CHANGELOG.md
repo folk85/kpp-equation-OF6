@@ -1,3 +1,7 @@
+2021-01-14
+
+- Set it 
+
 2020-12-24
 
 - Add Stochastic Burgers equation with  initial spectrum of velocity by Ornstein-Uhlenbeck.

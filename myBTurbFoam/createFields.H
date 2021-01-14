@@ -182,6 +182,22 @@ if (sdeScheme == word("OrsteinTimeN")) {
     DK = DK / deps; 
 }
 
+label nmodes_read
+(
+    transportProperties.lookupOrDefault("nmodes", 10)
+);
+
+label mean_period_iters
+(
+    transportProperties.lookupOrDefault("mean_period_iters", 10)
+);
+
+scalar ampl_forcing
+(
+    transportProperties.lookupOrDefault("ampl_forcing", scalar(1.0e-5))
+);
+
+
 bool useOldField =
     runTime.controlDict().lookupOrDefault("useOldField", false);
 

@@ -98,6 +98,9 @@ int main(int argc, char *argv[])
     Info << "sigma = " << dsigma.value() << endl ;
     Info << "deps = " << deps << endl ;
     Info << "dnu = " << dnu << endl ;
+    Info << "nmodes_read = " << nmodes_read << endl ;
+    Info << "mean_period_iters = " << mean_period_iters << endl ;
+    Info << "ampl_forcing = " << ampl_forcing << endl ;
 
     // scalar timeo = runTime.time();
     // dimensionedScalar dx = Foam::cmptMag(C[1][0] - C[0][0]);
@@ -112,7 +115,6 @@ int main(int argc, char *argv[])
     label nel = C.size();
     scalar dWs(0.0);
     scalar dWi(0.0);
-
 
     // std::random_device rd;
     // std::mt19937 gen(rd());
@@ -290,36 +292,36 @@ int main(int argc, char *argv[])
     std::mt19937 gen_ts(rdt()); // clockTime.getTime()
 
     // std::poisson_distribution<int> poisson_delta(10.0 / dx);
-    std::poisson_distribution<int> poisson_delta(10);
+    std::poisson_distribution<int> poisson_delta(mean_period_iters);
 
     scalar dfreq = 2.0 * 3.1415 / dx / C.size();
-    List<scalar> kfreq(NMODES);
-    for (int i = 0; i < NMODES; i++)
+    List<scalar> kfreq(nmodes_read);
+    for (int i = 0; i < nmodes_read; i++)
     {
       kfreq[i] = dfreq * (i + 1);
     }
     
-    List<scalar> qamp(NMODES);
+    List<scalar> qamp(nmodes_read);
     scalar qamptmp = dtheta.value() * barVel.value();
-    for (int i = 0; i < NMODES; i++)
+    for (int i = 0; i < nmodes_read; i++)
     {
       qamp[i] = qamptmp * 0.5 / 3.1415 / (kfreq[i] * kfreq[i] + qamptmp * qamptmp);
       qamp[i] = Foam::sqrt(qamp[i] * dfreq);
     }
-    List<scalar> modesa(NMODES);
-    List<scalar> modesb(NMODES);
+    List<scalar> modesa(nmodes_read);
+    List<scalar> modesb(nmodes_read);
     scalar time_change = runTime.value();
     scalar dtime_delta = dx * dx * 0.8 ;
     label nsteps = poisson_delta(gen_ts);
     scalar maxa(-1.0);
     scalar maxb(-1.0);
     
-    scalar magnitude = 1.0e-5;
+    scalar magnitude = ampl_forcing;
     
     time_change += dtime_delta * nsteps;
     printf("Initialize forcing modes. Get N_iters: %d , Next update after: %g\n", nsteps, time_change);
 
-    for (int i = 0; i < NMODES; i++)
+    for (int i = 0; i < nmodes_read; i++)
     {
       modesa[i] = rndGen.scalarNormal();
       modesb[i] = rndGen.scalarNormal();
@@ -328,7 +330,7 @@ int main(int argc, char *argv[])
       // if (abs(modesb[i]) > maxb)
       // maxb = abs(modesb[i]);
     }
-    // for (int i = 0; i < NMODES; i++)
+    // for (int i = 0; i < nmodes_read; i++)
     // {
     //   modesa[i] /= maxa;
     //   modesb[i] /= maxb;
@@ -337,7 +339,7 @@ int main(int argc, char *argv[])
     for (int i = 0; i < C.size(); i++)
     {
       scalar dtmp = 0.0e0;
-      for (int j = 0; j < NMODES; j++)
+      for (int j = 0; j < nmodes_read; j++)
       {
         dtmp += qamp[j] * (modesa[j] * Foam::cos(kfreq[j] * C[i].component(0)) + modesb[j] * Foam::sin(kfreq[j] * C[i].component(0)));
       }
@@ -377,7 +379,7 @@ int main(int argc, char *argv[])
           printf("Update forcing modes. Get N_iters: %d , Next update after: %g\n", nsteps, time_change);
           maxa = -1.0;
           maxb = -1.0;
-          for (int i = 0; i < NMODES; i++)
+          for (int i = 0; i < nmodes_read; i++)
           {
             modesa[i] = rndGen.scalarNormal();
             modesb[i] = rndGen.scalarNormal();
@@ -386,7 +388,7 @@ int main(int argc, char *argv[])
             // if (abs(modesb[i]) > maxb)
             //   maxb = abs(modesb[i]);
           }
-          // for (int i = 0; i < NMODES; i++)
+          // for (int i = 0; i < nmodes_read; i++)
           // {
           //   modesa[i] /= maxa;
           //   modesb[i] /= maxb;
@@ -394,7 +396,7 @@ int main(int argc, char *argv[])
           for (int i = 0; i < C.size(); i++)
           {
             scalar dtmp = 0.0e0;
-            for (int j = 0; j < NMODES; j++)
+            for (int j = 0; j < nmodes_read; j++)
             {
               dtmp += qamp[j] * (modesa[j] * Foam::cos(kfreq[j] * C[i].component(0)) + modesb[j] * Foam::sin(kfreq[j] * C[i].component(0)));
             }
@@ -616,6 +618,7 @@ int main(int argc, char *argv[])
         scalar flamePos(-1.0);
         scalar meanVel(0.0);
         scalar meanVel2(0.0);
+        scalar stdVel(0.0);
         forAll(mesh.C(),i) {
             meanVel += U[i][0];
             meanVel2 += magSqr(U[i]);
@@ -633,13 +636,19 @@ int main(int argc, char *argv[])
         // }
         meanVel /= mesh.C().size();
         meanVel2 /= mesh.C().size();
+        forAll(mesh.C(),i) {
+            stdVel += (U[i][0] - meanVel) * (U[i][0] - meanVel);
+        }
+        stdVel /= mesh.C().size();
+        stdVel = Foam::sqrt(stdVel);
         Info << "ForCorr" ;
         for (int i=1;i<8;i++){
           // Info << " "<< U[i*100][0];
           printf(" %g",U[i*100][0]);
         }
         Info << endl;
-        Info<< nl << "Velocity = " << vel.value()<< " " << velRes.value() << " " << tvel.value() << " " << flamePos << " " << Foam::gMax(T.internalField()) << " " << Foam::gMax(xi.internalField())<< " " << meanVel << " " << flamePos2 << " " << meanVel2 << nl << endl;      
+        printf("Get the velocity parameters Mean %g   MeanSqr %g and stdVel %g \n", meanVel, meanVel2, stdVel);
+        // Info<< nl << "Velocity = " << vel.value()<< " " << velRes.value() << " " << tvel.value() << " " << flamePos << " " << Foam::gMax(T.internalField()) << " " << Foam::gMax(xi.internalField())<< " " << meanVel << " " << flamePos2 << " " << meanVel2 << nl << endl;      
         // Info<< "phi = " << phi.value()<< " " << velRes.value() << nl << endl;
 
         runTime.write();
