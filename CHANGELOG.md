@@ -1,3 +1,7 @@
+2021-02-05
+
+- `myBturbFOAM`: Integrate FFT for velocity to get spectral kinetic energy distribution `Ek`. Use three types of EWM with alpha 1e-3, 1e-5 and `dt/100`. Add calculation of autocorrelation function `Rx`.
+
 2021-01-14
 
 - Set it 

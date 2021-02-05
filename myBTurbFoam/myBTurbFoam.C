@@ -34,10 +34,59 @@ Description
 #include "simpleControl.H"
 #include "Random.H"
 #include <random>
+#include <complex>
+#include <iostream>
+#include <valarray>
+#include "complexFields.H"
 
-#define NMODES 20
+const double PI = 3.141592653589793238460;
+ 
+typedef std::complex<double> Complex;
+typedef std::valarray<Complex> CArray;
+
+#define NMODES 3
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Cooley–Tukey FFT (in-place, divide-and-conquer)
+// Higher memory requirements and redundancy although more intuitive
+void fft(CArray& x)
+{
+    const size_t N = x.size();
+    if (N <= 1) return;
+ 
+    // divide
+    CArray even = x[std::slice(0, N/2, 2)];
+    CArray  odd = x[std::slice(1, N/2, 2)];
+ 
+    // conquer
+    fft(even);
+    fft(odd);
+ 
+    // combine
+    for (size_t k = 0; k < N/2; ++k)
+    {
+        Complex t = std::polar(1.0, -2 * PI * k / N) * odd[k];
+        x[k    ] = even[k] + t;
+        x[k+N/2] = even[k] - t;
+    }
+}
+
+// inverse fft (in-place)
+void ifft(CArray& x)
+{
+    // conjugate the complex numbers
+    x = x.apply(std::conj);
+ 
+    // forward fft
+    fft( x );
+ 
+    // conjugate the complex numbers again
+    x = x.apply(std::conj);
+ 
+    // scale the numbers
+    x /= x.size();
+}
 
 scalar get_ee(scalar kk, scalar theta){
   return theta / 2.0 / 3.1415 / (kk * kk + theta * theta);
@@ -113,6 +162,7 @@ int main(int argc, char *argv[])
     List<scalar> dFo(C.size());
     List<scalar> dr(C.size());
     label nel = C.size();
+    scalar dnel = scalar(nel);
     scalar dWs(0.0);
     scalar dWi(0.0);
 
@@ -281,6 +331,53 @@ int main(int argc, char *argv[])
     //   file << i<<","<< C[i][0] << ',' << velInit[i]<<","<<U[i][0] << ',' << dr[i]<<std::endl;
     // }
     // file.close();
+
+    // Set the field 
+    CArray ufft(C.size());
+    const double imag = 0.0e0;
+    forAll(U, i) {
+      std::complex<double> ctmp;
+      ctmp.real(U[i][0]);
+      ctmp.imag(imag);
+      ufft[i] = ctmp;
+      // ufft[i].imag = 0.0;
+    }
+    fft(ufft);
+
+    List<scalar> alpha(3);
+    alpha[0] = 1.0e-1;
+    alpha[1] = 1.0e-3;
+    alpha[2] = 100;
+    
+    complexField ek_c0(C.size());
+    complexField ek_c1(C.size());
+    complexField ek_c2(C.size());
+    complexField ek_c3(C.size());
+    CArray r_c1(C.size());
+    CArray r_c2(C.size());
+    CArray r_c3(C.size());
+    forAll(ek_c0, i) {
+      // ek_c[i] = ufft[i] * std::conj(ufft[i]);
+      ek_c0[i] = ufft[i].real() * ufft[i].real() + ufft[i].imag() * ufft[i].imag();
+      ek_c0[i] /= dnel;
+      ek_c1[i] = ek_c0[i];
+      ek_c2[i] = ek_c0[i];
+      ek_c3[i] = ek_c0[i];
+      // r_c1[i].real(ek_c1[i].Re());
+      // r_c2[i].real(ek_c2[i].Re());
+      // r_c3[i].real(ek_c3[i].Re());
+      // r_c1[i].imag(imag);
+      // r_c2[i].imag(imag);
+      // r_c3[i].imag(imag);
+    }
+    // ifft(r_c1);
+    // ifft(r_c2);
+    // ifft(r_c3);
+    // forAll(r_c1, i) {
+    //   r_c1[i] /= r_c1[0];
+    //   r_c2[i] /= r_c2[0];
+    //   r_c3[i] /= r_c3[0];
+    // }
 
     #include "setInitialDeltaT.H"
 
@@ -647,6 +744,47 @@ int main(int argc, char *argv[])
           printf(" %g",U[i*100][0]);
         }
         Info << endl;
+        //
+        // Calc Spectral energy of 
+        forAll(U, i) {
+          std::complex<double> ctmp;
+          ctmp.real(U[i][0]);
+          ctmp.imag(imag);
+          ufft[i] = ctmp;
+          // ufft[i].imag = 0.0;
+        }
+        fft(ufft);
+        scalar alpha_t = runTime.deltaTValue() / alpha[2];
+        forAll(ek_c0, i) {
+          // ek_c[i] = ufft[i] * std::conj(ufft[i]);
+          ek_c0[i] = ufft[i].real() * ufft[i].real() + ufft[i].imag() * ufft[i].imag();
+          ek_c0[i] /= dnel;
+          ek_c1[i] = ek_c1[i] * (1.0 - alpha[0]) + alpha[0] * ek_c0[i];
+          ek_c2[i] = ek_c2[i] * (1.0 - alpha[1]) + alpha[1] * ek_c0[i];
+          ek_c3[i] = ek_c3[i] * (1.0 - alpha_t) + alpha_t * ek_c0[i];
+          Ek[i][0] = ek_c1[i].Re();
+          Ek[i][1] = ek_c2[i].Re();
+          Ek[i][2] = ek_c3[i].Re();
+          r_c1[i].real(ek_c1[i].Re());
+          r_c2[i].real(ek_c2[i].Re());
+          r_c3[i].real(ek_c3[i].Re());
+          r_c1[i].imag(imag);
+          r_c2[i].imag(imag);
+          r_c3[i].imag(imag);
+        }
+        ifft(r_c1);
+        ifft(r_c2);
+        ifft(r_c3);
+        forAll(r_c1, i) {
+          r_c1[i] /= r_c1[0];
+          r_c2[i] /= r_c2[0];
+          r_c3[i] /= r_c3[0];
+          Rx[i][0] = r_c1[i].real();
+          Rx[i][1] = r_c2[i].real();
+          Rx[i][2] = r_c3[i].real();
+        }
+        // Ek = Re(ek_c1);
+        //
         printf("Get the velocity parameters Mean %g   MeanSqr %g and stdVel %g \n", meanVel, meanVel2, stdVel);
         // Info<< nl << "Velocity = " << vel.value()<< " " << velRes.value() << " " << tvel.value() << " " << flamePos << " " << Foam::gMax(T.internalField()) << " " << Foam::gMax(xi.internalField())<< " " << meanVel << " " << flamePos2 << " " << meanVel2 << nl << endl;      
         // Info<< "phi = " << phi.value()<< " " << velRes.value() << nl << endl;

@@ -40,6 +40,34 @@ volScalarField velInit
     mesh
 );
 
+volVectorField Ek
+(
+    IOobject
+    (
+        "Ek",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    // dimension(0,0,0,0,0,0,0),
+    mesh
+);
+
+volVectorField Rx
+(
+    IOobject
+    (
+        "Rx",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    // dimension(0,0,0,0,0,0,0),
+    mesh
+);
+
 Info<< "Reading field U\n" << endl;
 
 volVectorField U
