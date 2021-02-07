@@ -13,6 +13,7 @@ volScalarField T
     // dimension(0,0,0,0,0,0,0),
     mesh
 );
+Info<< "Reading field xi\n" << endl;
 
 volScalarField xi
 (
@@ -26,6 +27,7 @@ volScalarField xi
     ),
     mesh
 );
+Info<< "Reading field velInit\n" << endl;
 
 volScalarField velInit
 (
@@ -40,6 +42,8 @@ volScalarField velInit
     mesh
 );
 
+Info<< "Reading field Ek\n" << endl;
+
 volVectorField Ek
 (
     IOobject
@@ -53,6 +57,8 @@ volVectorField Ek
     // dimension(0,0,0,0,0,0,0),
     mesh
 );
+
+Info<< "Reading field Rx\n" << endl;
 
 volVectorField Rx
 (

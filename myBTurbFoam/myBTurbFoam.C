@@ -779,12 +779,40 @@ int main(int argc, char *argv[])
           r_c1[i] /= r_c1[0];
           r_c2[i] /= r_c2[0];
           r_c3[i] /= r_c3[0];
-          Rx[i][0] = r_c1[i].real();
-          Rx[i][1] = r_c2[i].real();
-          Rx[i][2] = r_c3[i].real();
+          Rx[i][0] = (r_c1[i] / r_c1[0]).real();
+          Rx[i][1] = (r_c2[i] / r_c2[0]).real();
+          Rx[i][2] = (r_c3[i] / r_c3[0]).real();
         }
-        // Ek = Re(ek_c1);
         //
+        // Calc L = \int_{0}^{Lx/2} Rx dx
+        //
+        std::vector<double> lx(6);
+        forAll(lx, i) {
+          lx[i] = 0.0e0;
+        }
+        for (label i = 0; i < nel / 2; i++)
+        {
+          lx[0] += dx * Rx[i][0];
+          lx[1] += dx * Rx[i][1];
+          lx[2] += dx * Rx[i][2];
+          if (i < nel / 4) {
+            lx[3] += dx * Rx[i][0];
+            lx[4] += dx * Rx[i][1];
+            lx[5] += dx * Rx[i][2];
+          }
+        }
+        
+        printf("Correlation L ");
+        forAll(lx, i) {
+          printf("%g ", lx[i]);
+        }
+        printf("%g ", Ek[0][0]);
+        printf("%g ", Ek[0][1]);
+        printf("%g ", Ek[0][2]);
+        printf("%g ", r_c1[0].real());
+        printf("%g ", r_c2[0].real());
+        printf("%g\n", r_c3[0].real());
+
         printf("Get the velocity parameters Mean %g   MeanSqr %g and stdVel %g \n", meanVel, meanVel2, stdVel);
         // Info<< nl << "Velocity = " << vel.value()<< " " << velRes.value() << " " << tvel.value() << " " << flamePos << " " << Foam::gMax(T.internalField()) << " " << Foam::gMax(xi.internalField())<< " " << meanVel << " " << flamePos2 << " " << meanVel2 << nl << endl;      
         // Info<< "phi = " << phi.value()<< " " << velRes.value() << nl << endl;

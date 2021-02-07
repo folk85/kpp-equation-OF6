@@ -1,3 +1,7 @@
+2021-02-06
+
+- `myBturbFOAM`: Add correlation curves in `Rx` vector. Calculate integral length scale. 
+
 2021-02-05
 
 - `myBturbFOAM`: Integrate FFT for velocity to get spectral kinetic energy distribution `Ek`. Use three types of EWM with alpha 1e-3, 1e-5 and `dt/100`. Add calculation of autocorrelation function `Rx`.
